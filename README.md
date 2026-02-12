@@ -2,6 +2,24 @@
 An agent that uses a customer-facing LLM chatbot to handle order-related actions (cancellations and tracking) by enforcing relevant policies.
 
 
+### Setup
+
+#### Virtual Env generation
+```
+python3 -m venv proj_ai_customer_support_agent
+source proj_ai_customer_support_agent/bin/activate
+pip install -r requirements.txt
+```
+
+#### Run tests
+```bash
+export PYTHONPATH=$PWD/src
+pytest -q
+```
+
+
+
+
 # Architecture
 
 - Note that we are assuming that the LLM call, policy evaluation, and API call all finish within a fairly short time period. If we had policies that required longer evaluation processes (such as running a risk model that could take 30+ seconds to complete) - we would want to further decouple the architecture to use a more fully asynchronous workflow.
