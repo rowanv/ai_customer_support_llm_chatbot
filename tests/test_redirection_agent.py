@@ -1,0 +1,61 @@
+import os
+import sys
+
+
+# Ensure the python-backend directory is importable as a package root for tests
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+PYTHON_BACKEND = os.path.join(ROOT, "python-backend")
+if PYTHON_BACKEND not in sys.path:
+    sys.path.insert(0, PYTHON_BACKEND)
+
+
+def test_redirection_agent_metadata(fake_openai_agents):
+    from customer_service import agents as cs_agents
+
+    agent = cs_agents.redirection_agent
+
+    assert getattr(agent, "name", None) == "Redirection Agent"
+
+
+def test_redirection_agent_has_input_guardrails(fake_openai_agents):
+    from customer_service import agents as cs_agents
+
+    agent = cs_agents.redirection_agent
+
+    guardrails = getattr(agent, "input_guardrails", None)
+    assert isinstance(guardrails, (list, tuple))
+    names = {g.__name__ for g in guardrails if hasattr(g, "__name__")}
+
+    # Expect the relevance and jailbreak guardrails to be attached
+    assert "relevance_guardrail" in names
+    assert "jailbreak_guardrail" in names
+
+
+def test_redirection_agent_runtime_mock(fake_openai_agents):
+    import asyncio
+
+    # now import the customer_service agents (they will pick up our fake module)
+    from customer_service import agents as cs_agents
+
+    # Create a fake Runner.run implementation that returns a predictable result
+    class FakeResult:
+        def __init__(self, final):
+            self._final = final
+
+        def final_output_as(self, _model):
+            return self._final
+
+    class Runner:
+        @staticmethod
+        async def run(agent, input, context=None):
+            return FakeResult({"handoff": "Order Changes", "reason": "matched keywords"})
+
+    fake_openai_agents.Runner = Runner
+
+    # Run the runner and assert we get the mocked response
+    result = asyncio.run(fake_openai_agents.Runner.run(cs_agents.redirection_agent, "Please change my order #123", context=None))
+    output = result.final_output_as(None)
+
+    assert output["handoff"] == "Order Changes"
+    # Ensure the agent instructions include the recommended prefix from our fake module
+    assert "[RECOMMENDED]" in cs_agents.redirection_agent.instructions

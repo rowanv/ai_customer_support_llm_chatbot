@@ -1,9 +1,19 @@
-from __future__ import annotatios as _annotations 
+from __future__ import annotations as _annotations
 
-from chatkit.agents import AgentContext 
+from typing import Any
 
 
-class UserConversationContext():
+class AgentChatContext:
+    """Lightweight stand-in for agent chat context used in tests.
+
+    This avoids requiring the `openai-chatkit`/`chatkit` package during tests.
+    """
+
+    def __init__(self) -> None:
+        self.state: dict[str, Any] = {}
+
+
+class UserConversationContext:
     """Stores context on a per session basis"""
 
     user_name: str | None = None
@@ -12,11 +22,7 @@ class UserConversationContext():
     order_id: str | None = None
 
 
-def create_initial_agent_context() -> AgentContext:
-    """
-    Factory for a new AgentContext.
-    Starts empty, values populated during conversation
-    """
-    context = AgentContext()
-    return context 
+def create_initial_agent_context() -> AgentChatContext:
+    """Factory for a new AgentChatContext."""
+    return AgentChatContext()
 
