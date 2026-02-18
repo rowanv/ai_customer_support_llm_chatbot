@@ -209,4 +209,5 @@ __marimo__/
 # Node Dependency directories
 node_modules/
 jspm_packages/
-
+ui/.next/
+ui/components/
