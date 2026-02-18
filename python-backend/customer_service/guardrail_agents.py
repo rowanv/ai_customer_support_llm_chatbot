@@ -2,7 +2,7 @@ from __future__ import annotations as _annotations
 
 from pydantic import BaseModel
 
-from openai_agents import (
+from agents import (
     Agent,
     GuardrailFunctionOutput,
     RunContextWrapper,

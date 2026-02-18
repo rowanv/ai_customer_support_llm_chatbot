@@ -1,5 +1,5 @@
-from openai_agents import Agent, RunContextWrapper
-from openai_agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
+from agents import Agent, RunContextWrapper
+from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 from .context import AgentChatContext
 from .guardrail_agents import relevance_guardrail, jailbreak_guardrail

@@ -42,15 +42,15 @@ def sample_user_flagged_policy():
 
 
 @pytest.fixture(scope="module")
-def fake_openai_agents():
-    """Inject a lightweight fake `openai_agents` package into sys.modules for tests.
+def fake_agents():
+    """Inject a lightweight fake `agents` package into sys.modules for tests.
 
     Yields the fake module object so tests can customize behavior (e.g., Runner.run).
     """
     import types
     import sys
 
-    fake = types.ModuleType("openai_agents")
+    fake = types.ModuleType("agents")
 
     class Agent:
         def __class_getitem__(cls, item):
@@ -91,18 +91,25 @@ def fake_openai_agents():
 
     fake.Runner = Runner
 
-    ext_pkg = types.ModuleType("openai_agents.extensions")
-    hp = types.ModuleType("openai_agents.extensions.handoff_prompt")
+    ext_pkg = types.ModuleType("agents.extensions")
+    hp = types.ModuleType("agents.extensions.handoff_prompt")
     hp.RECOMMENDED_PROMPT_PREFIX = "[RECOMMENDED]"
     ext_pkg.handoff_prompt = hp
 
-    sys.modules["openai_agents"] = fake
-    sys.modules["openai_agents.extensions"] = ext_pkg
-    sys.modules["openai_agents.extensions.handoff_prompt"] = hp
+    # Also expose the fake under the top-level `agents` package name so code
+    # that imports `agents` (installed distribution) will pick up the fake
+    # during tests.
+    sys.modules["agents"] = fake
+    sys.modules["agents.extensions"] = ext_pkg
+    sys.modules["agents.extensions.handoff_prompt"] = hp
 
     try:
         yield fake
     finally:
         # Clean up injected modules
-        for name in ("openai_agents.extensions.handoff_prompt", "openai_agents.extensions", "openai_agents"):
+        for name in (
+            "agents.extensions.handoff_prompt",
+            "agents.extensions",
+            "agents",
+        ):
             sys.modules.pop(name, None)
