@@ -3,15 +3,6 @@ from typing import AsyncIterator
 import json
 from typing import Any, Dict
 
-from chatkit.server import StreamingResult, ChatKitServer
-from chatkit.types import (
-    ThreadItemDoneEvent,
-    ThreadMetadata,
-    UserMessageItem,
-    AssistantMessageItem,
-    AssistantMessageContent,
-    ThreadStreamEvent,
-)
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
@@ -21,30 +12,14 @@ from customer_service.customer_service_agents import (
 )
 
 from customer_service.context import create_initial_agent_context
+from server import CustomerServiceServer
 from memory_store import CustomerServiceChatkitStore
 
-#from server import CustomerServiceServer
 
 app = FastAPI()
 
 
-class CustomerServiceServer(ChatKitServer):
-    async def respond(
-            self,
-            thread: ThreadMetadata,
-            input_user_message: UserMessageItem | None,
-            context: dict,
-    ) -> AsyncIterator[ThreadStreamEvent]:
-        # Streams a fixed "Hello, world!" assistant message
-        yield ThreadItemDoneEvent(
-            item=AssistantMessageItem(
-                thread_id=thread.id,
-                id=self.store.generate_item_id("message", thread, context),
-                created_at=datetime.now(),
-                content=[AssistantMessageContent(text="Hello, world!")],
-            ),
-        )
-    
+
 
 server = CustomerServiceServer(store=CustomerServiceChatkitStore())
 
