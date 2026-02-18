@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from agents import (
     Runner, 
+    Handoff,
     MessageOutputItem, 
     HandoffOutputItem, 
     ToolCallItem, 
@@ -33,6 +34,8 @@ from chatkit.types import (
 
 from customer_service.customer_service_agents import (
     redirection_agent,
+    order_cancellation_agent,
+    order_tracking_agent,
 )
 from context import (
     CustomerServiceAgentChatContext, 
@@ -64,6 +67,8 @@ def _get_agent_by_name(name: str):
     """Return the agent object by name."""
     agents = {
         redirection_agent.name: redirection_agent,
+        order_cancellation_agent.name: order_cancellation_agent,
+        order_tracking_agent.name: order_tracking_agent,
     }
     return agents.get(name, redirection_agent)
 
@@ -96,6 +101,8 @@ def _build_agents_list() -> List[Dict[str, Any]]:
 
     return [
         make_agent_dict(redirection_agent),
+        make_agent_dict(order_cancellation_agent),
+        make_agent_dict(order_tracking_agent),
     ]
 
 
