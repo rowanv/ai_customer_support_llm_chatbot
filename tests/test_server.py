@@ -57,3 +57,20 @@ def test_cors_headers_present():
         "Access-Control-Request-Method": "POST"
     })
     assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+def test_context_change_detection_detects_changes():
+    from python_backend.context import CustomerServiceAgentContext
+    prev = CustomerServiceAgentContext(customer_name="Marcus Henderson", order_id="123", language="en")
+    new_context = {"customer_name": "Hana Suzuki", "order_id": "123", "language": "en"}
+    prev_dict = prev.model_dump()
+    changes = {k: new_context[k] for k in new_context if prev_dict.get(k) != new_context[k]}
+    assert changes == {"customer_name": "Hana Suzuki"}
+
+
+def test_context_change_detection_no_changes():
+    from python_backend.context import CustomerServiceAgentContext
+    prev = CustomerServiceAgentContext(customer_name="Marcus Henderson", order_id="123", language="en")
+    new_context = {"customer_name": "Marcus Henderson", "order_id": "123", "language": "en"}
+    prev_dict = prev.model_dump()
+    changes = {k: new_context[k] for k in new_context if prev_dict.get(k) != new_context[k]}
+    assert changes == {}

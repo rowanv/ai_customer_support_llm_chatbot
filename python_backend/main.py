@@ -6,14 +6,12 @@ from typing import Any, Dict
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
-
-from customer_service.customer_service_agents import (
-    redirection_agent,
-)
+from chatkit.server import StreamingResult
 
 from customer_service.context import create_initial_agent_context
 from server import CustomerServiceServer
 from memory_store import CustomerServiceChatkitStore
+
 
 
 app = FastAPI()

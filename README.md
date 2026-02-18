@@ -11,11 +11,23 @@ source proj_ai_customer_support_agent/bin/activate
 pip install -r requirements.txt
 ```
 
+### Setting your OpenAI API key
+
+You can set your OpenAI API key in your environment variables by running the following command in your terminal:
+
+```bash
+export OPENAI_API_KEY=your_api_key
+```
+
+You can also follow [these instructions](https://platform.openai.com/docs/libraries#create-and-export-an-api-key) to set your OpenAI key at a global level.
+
+
 #### Run tests
 ```bash
 export PYTHONPATH=$PWD/src
 pytest -q
 ```
+
 
 
 
