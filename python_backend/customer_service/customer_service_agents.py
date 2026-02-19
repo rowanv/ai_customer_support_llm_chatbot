@@ -25,18 +25,26 @@ such logic would go.
 """
 
 def on_order_cancellation_handoff(
-        context: RunContextWrapper[CustomerServiceAgentChatContext], 
-    ):
+    context: RunContextWrapper[CustomerServiceAgentChatContext],
+) -> None:
     pass
 
-def on_order_tracking_handoff( context: RunContextWrapper[CustomerServiceAgentChatContext], 
-    ):
+def on_order_tracking_handoff(
+    context: RunContextWrapper[CustomerServiceAgentChatContext],
+) -> None:
     pass
 
 
 class OrderInfo(TypedDict, total=False):
     order_id: str
+    id: str
     email: str
+    customer_email: str
+    status: str
+    type: str
+    datetime_placed: str
+    placed_at: str
+    created_at: str
 
 
 @function_tool
@@ -123,7 +131,9 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
     placed = order_info.get("datetime_placed") or order_info.get("placed_at") or order_info.get("created_at")
     try:
         if isinstance(placed, str):
-            placed_dt = datetime.fromisoformat(placed)
+            # Support ISO strings with trailing Z (UTC) and offsets
+            iso = placed.replace("Z", "+00:00")
+            placed_dt = datetime.fromisoformat(iso)
         elif isinstance(placed, datetime):
             placed_dt = placed
         else:
