@@ -32,17 +32,17 @@ from chatkit.types import (
     ProgressUpdateEvent,
 )
 
-from customer_service.customer_service_agents import (
+from python_backend.customer_service.customer_service_agents import (
     redirection_agent,
     order_cancellation_agent,
     order_tracking_agent,
 )
-from context import (
+from python_backend.context import (
     CustomerServiceAgentChatContext, 
     create_initial_agent_context,
     public_context,
 )
-from memory_store import CustomerServiceChatkitStore
+from python_backend.memory_store import CustomerServiceChatkitStore
 
 
 class AgentEvent(BaseModel):
