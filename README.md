@@ -91,7 +91,7 @@ the real external `/api/v1/...` endpoints instead of this module.
     ownership).
   - Responses:
     - 200: order record JSON containing `order_id`, `customer_email`,
-      `tracking_status`, `datetime_placed`, and `shipments` (each shipment has
+      `status`, `datetime_placed`, and `shipments` (each shipment has
       `carrier`, `tracking_number`, `status`, `estimated_delivery`).
     - 400: missing `X-Customer-Email` header
     - 403: header email does not match order owner

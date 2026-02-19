@@ -12,6 +12,7 @@ fully-local developer environment.
 """
 from datetime import date
 import datetime
+from datetime import timezone
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Header, HTTPException
@@ -28,7 +29,9 @@ class Shipment(BaseModel):
 class OrderRecord(BaseModel):
     order_id: str
     customer_email: str
-    tracking_status: str
+    # Expose both `status` and `tracking_status` for compatibility; keep them in sync.
+    status: str
+    tracking_status: Optional[str] = None
     datetime_placed: Optional[str]
     shipments: List[Shipment]
 
@@ -42,6 +45,7 @@ ORDERS_DB: Dict[str, OrderRecord] = {
     "A123": OrderRecord(
         order_id="A123",
         customer_email="a123@gmail.com",
+        status="shipped",
         tracking_status="shipped",
         datetime_placed="2026-02-18T10:00:00Z",
         shipments=[
@@ -56,11 +60,12 @@ ORDERS_DB: Dict[str, OrderRecord] = {
 
     # Add a non-shipped order for testing cancellation and other flows
     "B456": OrderRecord(
-            order_id="B456",
-            customer_email="b456@gmail.com",
-            tracking_status="processing",
-            datetime_placed=datetime.datetime.now().isoformat(),
-            shipments=[],
+        order_id="B456",
+        customer_email="b456@gmail.com",
+        status="processing",
+        tracking_status="processing",
+        datetime_placed=datetime.datetime.now(timezone.utc).isoformat(),
+        shipments=[],
     ),
 }
 
@@ -110,7 +115,8 @@ async def patch_order(order_id: str, update: OrderUpdate, x_customer_email: Opti
         raise HTTPException(status_code=403, detail="email does not match order")
 
     if update.status:
-        # update underlying tracking_status field for this simple local API
+        # update both status fields for compatibility
+        record.status = update.status
         record.tracking_status = update.status
 
     ORDERS_DB[order_id] = record

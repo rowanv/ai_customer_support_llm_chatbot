@@ -1,8 +1,15 @@
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from typing_extensions import TypedDict
 from typing import Optional, Any, Dict
+
+from python_backend.services.schemas import (
+    OkOrderResponse,
+    ErrorResponse,
+    ErrorObj,
+    OrderModel,
+)
 
 from agents import Agent, RunContextWrapper, handoff, function_tool
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
@@ -37,9 +44,7 @@ def on_order_tracking_handoff(
 
 class OrderInfo(TypedDict, total=False):
     order_id: str
-    id: str
     email: str
-    customer_email: str
     status: str
     type: str
     datetime_placed: str
@@ -77,7 +82,7 @@ async def get_order_info(ctx: RunContextWrapper[CustomerServiceAgentChatContext]
         pass
 
     if not order_id or not customer_email:
-        return {"error": "missing_order_id_or_email"}
+        return ErrorResponse(error=ErrorObj(type="missing_order_id_or_email", detail="order id and customer email required")).model_dump()
     
     
     url = f"{BASE_API_URL.rstrip('/')}/api/v1/orders/{order_id}/"
@@ -92,17 +97,23 @@ async def get_order_info(ctx: RunContextWrapper[CustomerServiceAgentChatContext]
         try:
             data = resp.json()
         except Exception:
-            return {"error": {"type": "invalid_json"}}
+            return ErrorResponse(error=ErrorObj(type="invalid_json", detail="invalid JSON from orders API")).model_dump()
         # confirm the email matches
         try:
             order_email = data.get("customer_email") or data.get("email")
             if order_email and order_email != customer_email:
-                return {"error": {"type": "email_mismatch"}}
+                return ErrorResponse(error=ErrorObj(type="email_mismatch", detail="customer email does not match order owner")).model_dump()
         except Exception:
             pass
-        return data
+        # validate/normalize into OrderModel
+        try:
+            order_model = OrderModel.model_validate(data)
+        except Exception:
+            # If the external API shape doesn't match, embed raw data
+            order_model = OrderModel(order_id=data.get("order_id", ""), customer_email=data.get("customer_email", data.get("email", "")), status=data.get("status", data.get("tracking_status", "unknown")), datetime_placed=data.get("datetime_placed"), shipments=data.get("shipments", []))
+        return OkOrderResponse(order=order_model).model_dump()
     else:
-        return {"error": {"type": "http", "status": resp.status_code, "detail": resp.text}}
+        return ErrorResponse(error=ErrorObj(type="http", status=resp.status_code, detail=resp.text)).model_dump()
 
 @function_tool
 async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, Any]:
@@ -113,19 +124,19 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
     """
     # Basic validations
     if not order_info:
-        return {"error": {"type": "missing_order_info", "message": "Order info is required."}}
+        return ErrorResponse(error=ErrorObj(type="missing_order_info", detail="Order info is required.")).model_dump()
 
     status = (order_info.get("status") or "").lower()
     otype = (order_info.get("type") or "").lower()
 
     if status == "cancelled":
-        return {"error": {"type": "order_cancelled", "message": "This order has already been cancelled."}}
+        return ErrorResponse(error=ErrorObj(type="order_cancelled", detail="This order has already been cancelled.")).model_dump()
 
     if "digital" in otype or "digital media" in otype:
-        return {"error": {"type": "digital_media_restriction", "message": "Orders for digital media cannot be cancelled once placed."}}
+        return ErrorResponse(error=ErrorObj(type="digital_media_restriction", detail="Orders for digital media cannot be cancelled once placed.")).model_dump()
 
     if status == "shipped":
-        return {"error": {"type": "already_shipped", "message": "This order has already been shipped and cannot be cancelled. If you would like to return the item once it arrives, we can assist with the return process."}}
+        return ErrorResponse(error=ErrorObj(type="already_shipped", detail="This order has already been shipped and cannot be cancelled. If you would like to return the item once it arrives, we can assist with the return process.")).model_dump()
 
     # check cancellation window (expect ISO string or datetime)
     placed = order_info.get("datetime_placed") or order_info.get("placed_at") or order_info.get("created_at")
@@ -142,14 +153,18 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
         placed_dt = None
 
     if placed_dt is not None:
-        if datetime.now() - placed_dt > timedelta(days=15):
-            return {"error": {"type": "cancellation_window_expired", "message": "The cancellation window for this order has expired."}}
+        # Ensure placed_dt is timezone-aware (assume UTC if naive)
+        if placed_dt.tzinfo is None:
+            placed_dt = placed_dt.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        if now - placed_dt > timedelta(days=15):
+            return ErrorResponse(error=ErrorObj(type="cancellation_window_expired", detail="The cancellation window for this order has expired.")).model_dump()
 
     # prepare PATCH request
     order_id = order_info.get("order_id") or order_info.get("id")
     customer_email = order_info.get("customer_email") or order_info.get("email")
     if not order_id or not customer_email:
-        return {"error": {"type": "missing_order_id_or_email", "message": "Order id and customer email are required to cancel an order."}}
+        return ErrorResponse(error=ErrorObj(type="missing_order_id_or_email", detail="Order id and customer email are required to cancel an order.")).model_dump()
 
     url = f"{BASE_API_URL.rstrip('/')}/api/v1/orders/{order_id}/"
     headers = {"X-Customer-Email": customer_email}
@@ -159,7 +174,7 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.patch(url, json=payload, headers=headers)
     except Exception as exc:
-        return {"error": {"type": "network_error", "detail": str(exc), "redirect": HUMAN_IN_LOOP}}
+        return ErrorResponse(error=ErrorObj(type="network_error", detail=str(exc), redirect=HUMAN_IN_LOOP)).model_dump()
 
     if resp.status_code in (200, 201, 204):
         # ideally return the updated order JSON
@@ -167,14 +182,19 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
             data = resp.json() if resp.content else {**order_info, "status": "cancelled"}
         except Exception:
             data = {**order_info, "status": "cancelled"}
-        return {"ok": True, "order": data}
+        # validate to OrderModel where possible
+        try:
+            order_model = OrderModel.model_validate(data)
+        except Exception:
+            order_model = OrderModel(order_id=order_id or data.get("order_id", ""), customer_email=customer_email, status=data.get("status", "cancelled"), datetime_placed=data.get("datetime_placed"), shipments=data.get("shipments", []))
+        return OkOrderResponse(order=order_model).model_dump()
     else:
         # map HTTP failures to structured errors
         try:
             detail = resp.json()
         except Exception:
             detail = resp.text
-        return {"error": {"type": "http", "status": resp.status_code, "detail": detail, "redirect": HUMAN_IN_LOOP}}
+        return ErrorResponse(error=ErrorObj(type="http", status=resp.status_code, detail=detail, redirect=HUMAN_IN_LOOP)).model_dump()
 
 # Define agents first (with empty handoffs)
 redirection_agent = Agent[CustomerServiceAgentChatContext](

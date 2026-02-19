@@ -50,6 +50,6 @@ def test_patch_order_success():
     resp = client.patch("/api/v1/orders/A123/", json={"status": "cancelled"}, headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    # local API stores status in `tracking_status`
+    # local API stores status in `status`
     assert data["order_id"] == "A123"
-    assert data.get("tracking_status") == "cancelled"
+    assert data.get("status") == "cancelled"
