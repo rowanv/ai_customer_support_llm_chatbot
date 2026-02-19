@@ -97,6 +97,17 @@ Security & dev notes
   customer emails in production logs.
 
 
+### Testing the LLM chatbot
+
+You can test the LLM chatbot locally using the sample email and order id included
+with the local dev API. Example test values:
+
+- Email: `a123@gmail.com`
+- Order ID: `A123`
+
+You can provide the information using the LLM frontend.
+
+
 ## Policies
 - Policies can be pulled via an API endpoint. This decouples the policies themselves from the codebase. Among other benefits, this means that the company's policies can be viewed by non-technical stakeholders via another interface, and tha t the policies themselves can be edited dynamically without needing to touch the agent codebase. 
 

@@ -146,6 +146,30 @@ class CustomerServiceServer(ChatKitServer):
         self._last_event_index: Dict[str, int] = {}
         self._last_snapshot: Dict[str, str] = {}
 
+    def _truncate(self, value: Any, max_len: int = 1000) -> str:
+        """Truncate large values for storage in event metadata.
+
+        Converts non-string values to JSON when possible, then truncates.
+        """
+        try:
+            if value is None:
+                return ""
+            if isinstance(value, str):
+                return value if len(value) <= max_len else value[:max_len] + "..."
+            # Try JSON-serializing other values
+            try:
+                import json
+
+                s = json.dumps(value)
+            except Exception:
+                s = str(value)
+            return s if len(s) <= max_len else s[:max_len] + "..."
+        except Exception:
+            try:
+                return str(value)
+            except Exception:
+                return ""
+
     def _state_for_thread(self, thread_id: str) -> ConversationState:
         if thread_id not in self._state:
             self._state[thread_id] = ConversationState()
