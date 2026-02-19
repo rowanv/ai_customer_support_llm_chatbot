@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AgentPanel } from "@/components/agent-panel";
+// AgentPanel intentionally hidden in this build
 import { ChatKitPanel } from "@/components/chatkit-panel";
 import type { Agent, AgentEvent, GuardrailCheck } from "@/lib/types";
 import { fetchBootstrapState, fetchThreadState } from "@/lib/api";
@@ -108,13 +108,7 @@ export default function Home() {
 
   return (
     <main className="flex h-screen gap-2 bg-gray-100 p-2">
-      <AgentPanel
-        agents={agents}
-        currentAgent={currentAgent}
-        events={events}
-        guardrails={guardrails}
-        context={context}
-      />
+      {/* AgentPanel hidden: left-hand panel removed in this build */}
       <ChatKitPanel
         initialThreadId={initialThreadId}
         onThreadChange={handleThreadChange}
