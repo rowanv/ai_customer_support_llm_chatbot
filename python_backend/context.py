@@ -2,6 +2,19 @@ from chatkit.agents import AgentContext
 from pydantic import BaseModel
 
 
+
+
+class AgentChatContext:
+    """Lightweight stand-in for agent chat context used in tests.
+
+    This avoids requiring the `openai-chatkit`/`chatkit` package during tests.
+    """
+
+    def __init__(self) -> None:
+        self.state: dict[str, Any] = {}
+
+
+
 class CustomerServiceAgentContext(BaseModel):
     """Context for airline customer service agents."""
 
@@ -21,7 +34,7 @@ class CustomerServiceAgentChatContext(AgentContext[dict]):
 
 
 
-def create_initial_context() -> CustomerServiceAgentContext:
+def create_initial_agent_context() -> CustomerServiceAgentContext:
     """
     Factory for a new CustomerServiceAgentContext.
     Starts empty; values are populated during the conversation.

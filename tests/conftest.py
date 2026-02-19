@@ -96,20 +96,53 @@ def fake_agents():
     hp.RECOMMENDED_PROMPT_PREFIX = "[RECOMMENDED]"
     ext_pkg.handoff_prompt = hp
 
+    # Provide a `handoff` factory function and lightweight Handoff object so
+    # tests that call `from agents import handoff` or
+    # `from agents.handoffs import handoff` behave like the real SDK.
+    class _Handoff:
+        def __init__(self, agent=None, on_handoff=None, description=None, **kwargs):
+            self.agent = agent
+            self.target_agent = agent
+            self.on_handoff = on_handoff
+            self.description = description
+
+    def handoff(agent=None, on_handoff=None, description=None, **kwargs):
+        return _Handoff(agent=agent, on_handoff=on_handoff, description=description, **kwargs)
+
+    fake.handoff = handoff
+    # also expose a small agents.handoffs module
+    handoffs_mod = types.ModuleType("agents.handoffs")
+    handoffs_mod.handoff = handoff
+
+    # Provide a minimal `chatkit.agents.AgentContext` so imports in
+    # production code succeed during tests without requiring the real package.
+    chatkit_mod = types.ModuleType("chatkit")
+    chatkit_agents = types.ModuleType("chatkit.agents")
+    class AgentContext:
+        def __class_getitem__(cls, item):
+            return cls
+    chatkit_agents.AgentContext = AgentContext
+
     # Also expose the fake under the top-level `agents` package name so code
     # that imports `agents` (installed distribution) will pick up the fake
     # during tests.
     sys.modules["agents"] = fake
+    sys.modules["agents.handoffs"] = handoffs_mod
     sys.modules["agents.extensions"] = ext_pkg
     sys.modules["agents.extensions.handoff_prompt"] = hp
+    sys.modules["chatkit"] = chatkit_mod
+    sys.modules["chatkit.agents"] = chatkit_agents
 
     try:
         yield fake
     finally:
         # Clean up injected modules
         for name in (
+            "chatkit.agents",
+            "chatkit",
             "agents.extensions.handoff_prompt",
             "agents.extensions",
+            "agents.handoffs",
             "agents",
         ):
             sys.modules.pop(name, None)

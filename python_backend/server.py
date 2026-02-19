@@ -39,7 +39,7 @@ from customer_service.customer_service_agents import (
 )
 from context import (
     CustomerServiceAgentChatContext, 
-    create_initial_context,
+    create_initial_agent_context,
     public_context,
 )
 from memory_store import CustomerServiceChatkitStore
@@ -129,7 +129,7 @@ def _parse_tool_args(raw_args: Any) -> Any:
 @dataclass
 class ConversationState:
     input_items: List[Any] = field(default_factory=list)
-    context: CustomerServiceContext = field(default_factory=create_initial_context)
+    context: CustomerServiceAgentChatContext = field(default_factory=create_initial_agent_context)
     current_agent_name: str = redirection_agent.name
     events: List[AgentEvent] = field(default_factory=list)
     guardrails: List[GuardrailCheck] = field(default_factory=list)

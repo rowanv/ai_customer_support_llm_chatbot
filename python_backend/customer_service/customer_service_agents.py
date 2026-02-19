@@ -1,8 +1,9 @@
 from agents import Agent, RunContextWrapper, handoff
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
-from context import CustomerServiceAgentChatContext
+from python_backend.context import CustomerServiceAgentChatContext
 from .guardrail_agents import relevance_guardrail, jailbreak_guardrail
+
 
 GENERAL_AGENT_MODEL = "gpt-5.2"
 

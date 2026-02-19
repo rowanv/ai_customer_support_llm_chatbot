@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from chatkit.server import StreamingResult
 
-from customer_service.context import create_initial_agent_context
+from python_backend.context import create_initial_agent_context
 from server import CustomerServiceServer
 from memory_store import CustomerServiceChatkitStore
 
@@ -20,6 +20,11 @@ app = FastAPI()
 
 
 server = CustomerServiceServer(store=CustomerServiceChatkitStore())
+
+
+@app.get("/health")
+async def health() -> dict:
+    return {"status": "healthy"}
 
 
 @app.post("/chatkit")
