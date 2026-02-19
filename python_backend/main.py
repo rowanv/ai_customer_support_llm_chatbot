@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from chatkit.server import StreamingResult
 
-from python_backend.context import create_initial_agent_context
+from context import create_initial_agent_context
 from server import CustomerServiceServer
 from memory_store import CustomerServiceChatkitStore
 from python_backend.server_local_dev_api import register_local_external_api

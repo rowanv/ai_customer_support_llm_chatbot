@@ -28,6 +28,15 @@ export PYTHONPATH=$PWD/src
 pytest -q
 ```
 
+### Running the server (development)
+
+Start the FastAPI app for local development from the repository root.
+
+```bash
+.venv/bin/python -m uvicorn main:app --reload --app-dir=python_backend --port 8000
+```
+
+
 
 
 
