@@ -78,6 +78,16 @@ def fake_agents():
     fake.RunContextWrapper = RunContextWrapper
     fake.GuardrailFunctionOutput = GuardrailFunctionOutput
     fake.input_guardrail = input_guardrail
+    def function_tool(func=None, **kwargs):
+        # no-op decorator that supports both @function_tool and @function_tool(...)
+        if func is None:
+            def _decorator(f):
+                return f
+
+            return _decorator
+        return func
+
+    fake.function_tool = function_tool
     fake.TResponseInputItem = object
     
     class Runner:
