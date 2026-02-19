@@ -24,17 +24,27 @@ You can also follow [these instructions](https://platform.openai.com/docs/librar
 
 #### Run tests
 ```bash
-export PYTHONPATH=$PWD/src
 pytest -q
 ```
 
 ### Running the server (development)
 
-Start the FastAPI app for local development from the repository root.
+Recommended developer workflow:
+
+1. Install package in editable mode (so `python_backend` is importable):
 
 ```bash
-.venv/bin/python -m uvicorn main:app --reload --app-dir=python_backend --port 8000
+.venv/bin/python -m pip install -e .
 ```
+
+2. Start the FastAPI app from the repository root (run as a module so package imports resolve):
+
+```bash
+.venv/bin/python -m uvicorn python_backend.main:app --reload --port 8000
+```
+
+Notes:
+- If you prefer not to install editable, set `PYTHONPATH=$PWD/src` for test runs where `src/` is used.
 
 
 
@@ -95,7 +105,7 @@ Security & dev notes
 - In production, ownership should be validated with authenticated identity
   rather than an arbitrary header. Avoid logging PII such as plaintext
   customer emails in production logs.
-
+- Base CI integration included under `.github/workflows/`
 
 ### Testing the LLM chatbot
 
@@ -108,42 +118,13 @@ with the local dev API. Example test values:
 You can provide the information using the LLM frontend.
 
 
-## Policies
-- Policies can be pulled via an API endpoint. This decouples the policies themselves from the codebase. Among other benefits, this means that the company's policies can be viewed by non-technical stakeholders via another interface, and tha t the policies themselves can be edited dynamically without needing to touch the agent codebase. 
+## Key pending items:
 
+- Ensuring sufficient auth: The app does not currently engage in secure identity verification for cancellation operations. Implementation would depend on building out a more fully-featured authentication system, and then limiting actions that the user should not have access to.
+- A more robust policy-handling system and architecture. Ideally, an external API that can be used to pull dynamically changing policy information. By creating an external microservice, this would also enable non-technical stakeholders to change policies in real-time. 
+- Additional guardrails and data leakage management, including limiting the data that is passed directly to the LLM, where necessary. This would depend on company PII and usage requirements
 
-```/api/v1/policies/
-```
-
-Sample response:
-```
-GET: {
-  "policies": [
-    {
-      "id": "standard_cancellation_window",
-      "type": "time_window",
-      "max_days": 10,
-      "priority": 3
-    },
-    {
-      "id": "no_cancel_after_shipping",
-      "type": "status_block",
-      "blocked_statuses": ["shipped", "delivered"],
-      "priority": 2
-    },
-    {
-      "id": "high_value_identity_verification",
-      "type": "value_threshold",
-      "min_amount": 500,
-      "requires_verification": true,
-      "priority": 1
-    },
-    {
-      "id": "fraud_flag_restriction",
-      "type": "fraud_block",
-      "block_actions": ["cancel_order"],
-      "priority": 0
-    }
-  ]
-}
-```
+## Additional items that would strengthen the app
+- More robust secret management - while not hardcoded, many other ways to handle vs. a manually set environmental variable
+- Adding telemetry and structured logs
+- I'm not very satisfied with the way that the tests handle mocking/patching the Open AI dependencies. I'd ideally prefer to build out an external library along the lines of `getmoto/moto` for the `boto3` AWS client, which enables much cleaner testing. 

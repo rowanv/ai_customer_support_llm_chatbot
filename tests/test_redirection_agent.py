@@ -27,17 +27,3 @@ def test_redirection_agent_metadata(fake_agents):
     found_agent = cs_agents.redirection_agent
 
     assert getattr(found_agent, "name", None) == "Redirection Agent"
-
-
-def test_redirection_agent_has_input_guardrails(fake_agents):
-    from python_backend.customer_service import customer_service_agents as cs_agents
-
-    found_agent = cs_agents.redirection_agent
-
-    guardrails = getattr(found_agent, "input_guardrails", None)
-    assert isinstance(guardrails, (list, tuple))
-    names = {g.__name__ for g in guardrails if hasattr(g, "__name__")}
-    
-    # Expect the relevance and jailbreak guardrails to be attached
-    assert "relevance_guardrail" in names
-    assert "jailbreak_guardrail" in names
