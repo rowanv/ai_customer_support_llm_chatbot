@@ -1,4 +1,5 @@
 import httpx
+from datetime import datetime, timedelta
 
 from typing_extensions import TypedDict
 from typing import Optional, Any, Dict
@@ -11,7 +12,7 @@ from .guardrail_agents import relevance_guardrail, jailbreak_guardrail
 
 
 GENERAL_AGENT_MODEL = "gpt-5.2"
-
+BASE_API_URL = "http://localhost:8000"
 
 HUMAN_IN_LOOP = "Please call 888-888-8888, where our team will be readily able to help you with any order issues."
 
@@ -39,7 +40,7 @@ class OrderInfo(TypedDict, total=False):
 
 
 @function_tool
-async def fetch_tracking(ctx: RunContextWrapper[CustomerServiceAgentChatContext], order_id: Optional[str] = None, customer_email: Optional[str] = None) -> Dict[str, Any]:
+async def get_order_info(ctx: RunContextWrapper[CustomerServiceAgentChatContext], order_id: Optional[str] = None, customer_email: Optional[str] = None) -> Dict[str, Any]:
     """Fetch tracking info for an order and return the order JSON.
 
     Tries arguments first, then falls back to values in `ctx.state` and
@@ -70,8 +71,8 @@ async def fetch_tracking(ctx: RunContextWrapper[CustomerServiceAgentChatContext]
     if not order_id or not customer_email:
         return {"error": "missing_order_id_or_email"}
     
-    base_url = "http://localhost:8000"
-    url = f"{base_url.rstrip('/')}/api/v1/orders/{order_id}/"
+    
+    url = f"{BASE_API_URL.rstrip('/')}/api/v1/orders/{order_id}/"
     headers = {"X-Customer-Email": customer_email}
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -95,7 +96,75 @@ async def fetch_tracking(ctx: RunContextWrapper[CustomerServiceAgentChatContext]
     else:
         return {"error": {"type": "http", "status": resp.status_code, "detail": resp.text}}
 
+@function_tool
+async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, Any]:
+    """Enforce cancellation policies and attempt to cancel the order via the external API.
 
+    `order_info` must include at least `order_id` and a customer email (either `email` or `customer_email`).
+    Returns a dict with either `ok: True` and the updated `order` or an `error` object.
+    """
+    # Basic validations
+    if not order_info:
+        return {"error": {"type": "missing_order_info", "message": "Order info is required."}}
+
+    status = (order_info.get("status") or "").lower()
+    otype = (order_info.get("type") or "").lower()
+
+    if status == "cancelled":
+        return {"error": {"type": "order_cancelled", "message": "This order has already been cancelled."}}
+
+    if "digital" in otype or "digital media" in otype:
+        return {"error": {"type": "digital_media_restriction", "message": "Orders for digital media cannot be cancelled once placed."}}
+
+    if status == "shipped":
+        return {"error": {"type": "already_shipped", "message": "This order has already been shipped and cannot be cancelled. If you would like to return the item once it arrives, we can assist with the return process."}}
+
+    # check cancellation window (expect ISO string or datetime)
+    placed = order_info.get("datetime_placed") or order_info.get("placed_at") or order_info.get("created_at")
+    try:
+        if isinstance(placed, str):
+            placed_dt = datetime.fromisoformat(placed)
+        elif isinstance(placed, datetime):
+            placed_dt = placed
+        else:
+            placed_dt = None
+    except Exception:
+        placed_dt = None
+
+    if placed_dt is not None:
+        if datetime.now() - placed_dt > timedelta(days=15):
+            return {"error": {"type": "cancellation_window_expired", "message": "The cancellation window for this order has expired."}}
+
+    # prepare PATCH request
+    order_id = order_info.get("order_id") or order_info.get("id")
+    customer_email = order_info.get("customer_email") or order_info.get("email")
+    if not order_id or not customer_email:
+        return {"error": {"type": "missing_order_id_or_email", "message": "Order id and customer email are required to cancel an order."}}
+
+    url = f"{BASE_API_URL.rstrip('/')}/api/v1/orders/{order_id}/"
+    headers = {"X-Customer-Email": customer_email}
+    payload = {"status": "cancelled"}
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.patch(url, json=payload, headers=headers)
+    except Exception as exc:
+        return {"error": {"type": "network_error", "detail": str(exc), "redirect": HUMAN_IN_LOOP}}
+
+    if resp.status_code in (200, 201, 204):
+        # ideally return the updated order JSON
+        try:
+            data = resp.json() if resp.content else {**order_info, "status": "cancelled"}
+        except Exception:
+            data = {**order_info, "status": "cancelled"}
+        return {"ok": True, "order": data}
+    else:
+        # map HTTP failures to structured errors
+        try:
+            detail = resp.json()
+        except Exception:
+            detail = resp.text
+        return {"error": {"type": "http", "status": resp.status_code, "detail": detail, "redirect": HUMAN_IN_LOOP}}
 
 # Define agents first (with empty handoffs)
 redirection_agent = Agent[CustomerServiceAgentChatContext](
@@ -126,7 +195,7 @@ order_cancellation_agent = Agent[CustomerServiceAgentChatContext](
         "If the order cannot be cancelled (e.g., already shipped), politely explain the situation and offer alternatives.;" \
         "return to the redirection agent if done or if the customer needs help with anything else"
     ),
-    tools=[],
+    tools=[get_order_info, cancel_order_or_enforce_policies],
     handoffs=[],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],
 )
@@ -142,7 +211,7 @@ order_tracking_agent = Agent[CustomerServiceAgentChatContext](
         "If there is a problem pulling up the tracking information, redirect to {HUMAN_IN_LOOP}"
         "Return to the redirection agent if done or if the customer needs help with anything else."
     ),
-    tools=[fetch_tracking],
+    tools=[get_order_info],
     handoffs=[],
     input_guardrails=[relevance_guardrail, jailbreak_guardrail],
 )

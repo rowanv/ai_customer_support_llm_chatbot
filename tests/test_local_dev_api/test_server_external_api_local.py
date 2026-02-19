@@ -43,3 +43,13 @@ def test_get_order_not_found():
     headers = {"X-Customer-Email": "a123@gmail.com"}
     resp = client.get("/api/v1/orders/NOPE123/", headers=headers)
     assert resp.status_code == 404
+
+
+def test_patch_order_success():
+    headers = {"X-Customer-Email": "a123@gmail.com"}
+    resp = client.patch("/api/v1/orders/A123/", json={"status": "cancelled"}, headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    # local API stores status in `tracking_status`
+    assert data["order_id"] == "A123"
+    assert data.get("tracking_status") == "cancelled"
