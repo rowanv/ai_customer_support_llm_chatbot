@@ -27,7 +27,7 @@ You can also follow [these instructions](https://platform.openai.com/docs/librar
 .venv/bin/python -m pytest -q
 ```
 
-### Running the server (development)
+### Running the backend server (development)
 
 Recommended developer workflow:
 
@@ -42,6 +42,28 @@ Recommended developer workflow:
 ```bash
 .venv/bin/python -m uvicorn python_backend.main:app --reload --port 8000
 ```
+
+### Run the UI
+
+To set up the UI's dependencies, you can run:
+
+```bash
+cd ui
+npm install
+```
+
+To run the UI and backend simultaneously
+
+From the `ui` folder, run:
+
+```bash
+npm run dev
+```
+
+The frontend will be available at: [http://localhost:3000](http://localhost:3000)
+
+This command will also start the backend.
+
 
 # Architecture
 
