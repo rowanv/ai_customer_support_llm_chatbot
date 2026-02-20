@@ -12,7 +12,7 @@ import pytest
 def sample_order():
     return {
         "order_id": "123",
-        "created_at": datetime.now() - timedelta(days=5),
+        "datetime_placed": datetime.now() - timedelta(days=5),
         "status": "processing",
         "amount": 200
     }

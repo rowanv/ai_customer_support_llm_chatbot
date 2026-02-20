@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class ErrorObj(BaseModel):
@@ -17,15 +18,19 @@ class Shipment(BaseModel):
     carrier: str
     tracking_number: str
     status: str
-    estimated_delivery: Optional[str]
+    estimated_delivery: Optional[datetime] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class OrderModel(BaseModel):
     order_id: str
-    customer_email: str
+    customer_email: EmailStr
     status: str
-    datetime_placed: Optional[str]
-    shipments: List[Dict[str, Any]] = []
+    datetime_placed: Optional[datetime] = None
+    shipments: List[Shipment] = []
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class OkOrderResponse(BaseModel):

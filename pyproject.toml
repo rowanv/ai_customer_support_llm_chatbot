@@ -15,4 +15,4 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 120
 select = ["E", "F", "W", "C90", "I", "RUF"]
-	extend-ignore = ["E501", "C901"]
+extend-ignore = ["E203", "E501", "C901"]

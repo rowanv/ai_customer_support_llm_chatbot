@@ -6,14 +6,14 @@ An agent that uses a customer-facing LLM chatbot to handle order-related actions
 
 #### Virtual Env generation
 ```
-python3 -m venv proj_ai_customer_support_agent
-source proj_ai_customer_support_agent/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ### Setting your OpenAI API key
 
-You can set your OpenAI API key in your environment variables by running the following command in your terminal:
+You can set your OpenAI API key in your environment variables by running the following command:
 
 ```bash
 export OPENAI_API_KEY=your_api_key
@@ -24,7 +24,7 @@ You can also follow [these instructions](https://platform.openai.com/docs/librar
 
 #### Run tests
 ```bash
-pytest -q
+.venv/bin/python -m pytest -q
 ```
 
 ### Running the server (development)
@@ -44,6 +44,37 @@ Recommended developer workflow:
 ```
 
 # Architecture
+
+## Architecture & Repo Structure (high-level)
+
+This section gives a quick map of the main components and where to find them in the repository.
+
+- `python_backend/` — core backend implementation
+  - `main.py` : FastAPI app and registration of local dev API
+  - `server.py` : ChatKit server implementation that orchestrates agents and threads
+  - `server_local_dev_api.py` : in-memory local orders API used for development/tests
+  - `customer_service/` : agent implementations and business logic
+    - `customer_service_agents.py` : agent definitions, tools (`get_order_info`, `cancel_order_or_enforce_policies`)
+    - `guardrail_agents.py` : lightweight guardrail functions used as input guardrails
+  - `services/` : shared clients and schemas
+    - `schemas.py` : Pydantic models for orders and standardized responses
+
+- `tests/` — automated tests
+  - `tests/test_server.py` : server-level tests
+  - `tests/test_local_dev_api/` : tests for the local orders API
+  - `tests/conftest.py` : test fixtures and fakes (note: prefer scoped fixtures / monkeypatch over global import mutation)
+
+- `docs/` — experiment and evaluation notes (`docs/experimentation.md`)
+
+- Tooling and config
+  - `pyproject.toml`, `mypy.ini`, `.pre-commit-config.yaml` : linting/typecheck and pre-commit setup
+  - `.github/workflows/` : CI workflow that runs tests and checks
+
+Design notes:
+- The architecture separates agent logic from the local external API to make it easy to run everything locally for development and testing.
+- Agents are defined as small, composable tools so policy checks and external API calls are explicit and testable.
+- For productionization you would replace the local orders API with a real external client and add authentication, structured logging, and metrics.
+
 
 ## Local testing mode
 This repository includes a small local HTTP API used for development and
@@ -109,37 +140,6 @@ with the local dev API. Example test values:
 - Order ID: `B456`
 
 You can provide the information using the LLM frontend.
-
-
-## Architecture & Repo Structure (high-level)
-
-This section gives a quick map of the main components and where to find them in the repository.
-
-- `python_backend/` — core backend implementation
-  - `main.py` : FastAPI app and registration of local dev API
-  - `server.py` : ChatKit server implementation that orchestrates agents and threads
-  - `server_local_dev_api.py` : in-memory local orders API used for development/tests
-  - `customer_service/` : agent implementations and business logic
-    - `customer_service_agents.py` : agent definitions, tools (`get_order_info`, `cancel_order_or_enforce_policies`)
-    - `guardrail_agents.py` : lightweight guardrail functions used as input guardrails
-  - `services/` : shared clients and schemas
-    - `schemas.py` : Pydantic models for orders and standardized responses
-
-- `tests/` — automated tests
-  - `tests/test_server.py` : server-level tests
-  - `tests/test_local_dev_api/` : tests for the local orders API
-  - `tests/conftest.py` : test fixtures and fakes (note: prefer scoped fixtures / monkeypatch over global import mutation)
-
-- `docs/` — experiment and evaluation notes (`docs/experimentation.md`)
-
-- Tooling and config
-  - `pyproject.toml`, `mypy.ini`, `.pre-commit-config.yaml` : linting/typecheck and pre-commit setup
-  - `.github/workflows/` : CI workflow that runs tests and checks
-
-Design notes:
-- The architecture separates agent logic from the local external API to make it easy to run everything locally for development and testing.
-- Agents are defined as small, composable tools so policy checks and external API calls are explicit and testable.
-- For productionization you would replace the local orders API with a real external client and add authentication, structured logging, and metrics.
 
 
 ## Key pending items:
