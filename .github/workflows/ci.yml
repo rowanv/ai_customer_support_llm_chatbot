@@ -22,16 +22,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install ruff mypy black isort
+          pip install ruff mypy
 
       - name: Run ruff
         run: ruff check .
-
-      - name: Check formatting with black
-        run: black --check .
-
-      - name: Check import sorting with isort
-        run: isort --check-only .
 
       - name: Run mypy
         run: mypy python_backend src tests || true

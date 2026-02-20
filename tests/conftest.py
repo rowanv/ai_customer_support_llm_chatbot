@@ -3,8 +3,9 @@
 Enables us to fake OpenAI Agents components.
 """
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 
 
 @pytest.fixture
@@ -47,8 +48,8 @@ def fake_agents():
 
     Yields the fake module object so tests can customize behavior (e.g., Runner.run).
     """
-    import types
     import sys
+    import types
 
     fake = types.ModuleType("agents")
 
@@ -89,7 +90,7 @@ def fake_agents():
 
     fake.function_tool = function_tool
     fake.TResponseInputItem = object
-    
+
     class Runner:
         @staticmethod
         async def run(*args, **kwargs):

@@ -10,9 +10,8 @@ real external API over the network (or use a dedicated SDK). Keeping a small
 local implementation here makes it simple to run the backend and agents in a
 fully-local developer environment.
 """
-from datetime import date
 import datetime
-from datetime import timezone
+from datetime import date, timezone
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Header, HTTPException

@@ -1,8 +1,7 @@
-import os
-import sys
 import importlib.util
+import os
 import pathlib
-
+import sys
 
 # Ensure the repository root is importable so `python_backend` package loads
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

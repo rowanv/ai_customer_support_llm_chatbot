@@ -1,10 +1,11 @@
 """
-We use use a small in-memory store so conversations persist 
+We use use a small in-memory store so conversations persist
 while the process is running, without introducing a database.
 Would be swapped out for a more robust solution if not a sample
 project.
 """
 from collections import defaultdict
+
 from chatkit.store import NotFoundError, Store
 from chatkit.types import Attachment, Page, ThreadItem, ThreadMetadata
 
@@ -99,4 +100,3 @@ class CustomerServiceChatkitStore(Store[dict]):
 
     async def delete_attachment(self, attachment_id: str, context: dict) -> None:
         raise NotImplementedError()
-    

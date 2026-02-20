@@ -1,7 +1,7 @@
+from typing import Any
+
 from chatkit.agents import AgentContext
 from pydantic import BaseModel
-
-
 
 
 class AgentChatContext:

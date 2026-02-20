@@ -1,22 +1,15 @@
-import httpx
 from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
 
-from typing_extensions import TypedDict
-from typing import Optional, Any, Dict
-
-from python_backend.services.schemas import (
-    OkOrderResponse,
-    ErrorResponse,
-    ErrorObj,
-    OrderModel,
-)
-
-from agents import Agent, RunContextWrapper, handoff, function_tool
+import httpx
+from agents import Agent, RunContextWrapper, function_tool, handoff
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
+from typing_extensions import TypedDict
 
 from python_backend.context import CustomerServiceAgentChatContext
-from .guardrail_agents import relevance_guardrail, jailbreak_guardrail
+from python_backend.services.schemas import ErrorObj, ErrorResponse, OkOrderResponse, OrderModel
 
+from .guardrail_agents import jailbreak_guardrail, relevance_guardrail
 
 GENERAL_AGENT_MODEL = "gpt-5.2"
 BASE_API_URL = "http://localhost:8000"
@@ -83,8 +76,8 @@ async def get_order_info(ctx: RunContextWrapper[CustomerServiceAgentChatContext]
 
     if not order_id or not customer_email:
         return ErrorResponse(error=ErrorObj(type="missing_order_id_or_email", detail="order id and customer email required")).model_dump()
-    
-    
+
+
     url = f"{BASE_API_URL.rstrip('/')}/api/v1/orders/{order_id}/"
     headers = {"X-Customer-Email": customer_email}
     try:
@@ -194,7 +187,9 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
             detail = resp.json()
         except Exception:
             detail = resp.text
-        return ErrorResponse(error=ErrorObj(type="http", status=resp.status_code, detail=detail, redirect=HUMAN_IN_LOOP)).model_dump()
+        return ErrorResponse(error=ErrorObj(
+            type="http", status=resp.status_code, detail=detail, redirect=HUMAN_IN_LOOP
+        )).model_dump()
 
 # Define agents first (with empty handoffs)
 redirection_agent = Agent[CustomerServiceAgentChatContext](
@@ -203,11 +198,15 @@ redirection_agent = Agent[CustomerServiceAgentChatContext](
     handoff_description="Sends a given request to a specialist agent for handling.",
     instructions=(
         f"{RECOMMENDED_PROMPT_PREFIX} "
-        "You are a helpful customer service agent for an online order management service. Route the customer to the best agent: "
-        "Order Changes for any changes to existing orders, Order Tracking for tracking existing orders," 
+        "You are a helpful customer service agent for an online order management service. "
+        "Route the customer to the best agent: "
+        "Order Cancellation for any changes to existing orders, Order Tracking for tracking "
+        "existing orders,"
         "For any other questions, route to {HUMAN_IN_LOOP}."
-        "If the request is clear, hand off immediately and let the specialist complete multi-step work without asking the user to confirm after each tool call."
-        "Never emit more than one handoff per message: do your prep (at most one tool call) and then hand off once."
+        "If the request is clear, hand off immediately and let the specialist complete "
+        "multi-step work without asking the user to confirm after each tool call."
+        "Never emit more than one handoff per message: do your prep (at most one tool"
+        " call) and then hand off once."
     ),
     tools=[],
     handoffs=[],
@@ -221,8 +220,10 @@ order_cancellation_agent = Agent[CustomerServiceAgentChatContext](
     instructions=(
         f"{RECOMMENDED_PROMPT_PREFIX} "
         "You are a helpful customer service agent specializing in order cancellations. "
-        "If a customer requests to cancel an order, confirm the order details, process the cancellation, and provide a clear confirmation message. "
-        "If the order cannot be cancelled (e.g., already shipped), politely explain the situation and offer alternatives.;" \
+        "If a customer requests to cancel an order, confirm the order details, "
+        "process the cancellation, and provide a clear confirmation message. "
+        "If the order cannot be cancelled (e.g., already shipped), politely explain "
+        "the situation and offer alternatives.;"
         "return to the redirection agent if done or if the customer needs help with anything else"
     ),
     tools=[get_order_info, cancel_order_or_enforce_policies],
@@ -237,7 +238,8 @@ order_tracking_agent = Agent[CustomerServiceAgentChatContext](
     instructions=(
         f"{RECOMMENDED_PROMPT_PREFIX} "
         "You are a helpful customer service agent specializing in order tracking. "
-        "When a customer asks about the status or location of their order, retrieve the latest tracking information and provide a concise, friendly update. "
+        "When a customer asks about the status or location of their order, retrieve " ""
+        "the latest tracking information and provide a concise, friendly update. "
         "If there is a problem pulling up the tracking information, redirect to {HUMAN_IN_LOOP}"
         "Return to the redirection agent if done or if the customer needs help with anything else."
     ),

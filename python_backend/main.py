@@ -1,19 +1,11 @@
-from datetime import datetime
-from typing import AsyncIterator
-import json
-from typing import Any, Dict
 
-from fastapi import Depends, FastAPI, Query, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse
 from chatkit.server import StreamingResult
+from fastapi import FastAPI, Request
+from fastapi.responses import Response, StreamingResponse
 
-from python_backend.context import create_initial_agent_context
-from python_backend.server import CustomerServiceServer
 from python_backend.memory_store import CustomerServiceChatkitStore
+from python_backend.server import CustomerServiceServer
 from python_backend.server_local_dev_api import register_local_external_api
-
-
 
 app = FastAPI()
 
@@ -45,5 +37,4 @@ except Exception:
 
 __all__ = [
     "app",
-    "redirection_agent",
 ]

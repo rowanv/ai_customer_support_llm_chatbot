@@ -1,48 +1,36 @@
-from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Dict, List, Optional
-from datetime import datetime
-from uuid import uuid4
-import time
 import asyncio
+import json
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, AsyncIterator, Dict, List, Optional
+from uuid import uuid4
 
-from pydantic import BaseModel
-
-from agents import (
-    Runner, 
-    Handoff,
-    MessageOutputItem, 
-    HandoffOutputItem, 
-    ToolCallItem, 
-    ToolCallOutputItem, 
-    ItemHelpers,
-)
-from agents.exceptions import MaxTurnsExceeded, InputGuardrailTripwireTriggered
+from agents import Handoff, HandoffOutputItem, ItemHelpers, MessageOutputItem, Runner, ToolCallItem, ToolCallOutputItem
+from agents.exceptions import InputGuardrailTripwireTriggered, MaxTurnsExceeded
 from chatkit.agents import stream_agent_response
 from chatkit.server import ChatKitServer
+from chatkit.store import NotFoundError
 from chatkit.types import (
+    Action,
+    AssistantMessageContent,
+    AssistantMessageItem,
+    ClientEffectEvent,
+    ProgressUpdateEvent,
     ThreadItemDoneEvent,
     ThreadMetadata,
-    UserMessageItem,
-    AssistantMessageItem,
-    AssistantMessageContent,
-    ClientEffectEvent,
-    Action,
-    WidgetItem,
     ThreadStreamEvent,
-    ProgressUpdateEvent,
+    UserMessageItem,
+    WidgetItem,
 )
+from pydantic import BaseModel
 
+from python_backend.context import CustomerServiceAgentChatContext, create_initial_agent_context, public_context
 from python_backend.customer_service.customer_service_agents import (
-    redirection_agent,
     order_cancellation_agent,
     order_tracking_agent,
+    redirection_agent,
 )
-from python_backend.context import (
-    CustomerServiceAgentChatContext, 
-    create_initial_agent_context,
-    public_context,
-)
-from python_backend.memory_store import CustomerServiceChatkitStore
 
 
 class AgentEvent(BaseModel):
@@ -174,7 +162,7 @@ class CustomerServiceServer(ChatKitServer):
         if thread_id not in self._state:
             self._state[thread_id] = ConversationState()
         return self._state[thread_id]
-    
+
     async def _ensure_thread(
         self, thread_id: Optional[str], context: dict[str, Any]
     ) -> ThreadMetadata:
@@ -287,7 +275,7 @@ class CustomerServiceServer(ChatKitServer):
             input_user_message: UserMessageItem | None,
             context: dict,
     ) -> AsyncIterator[ThreadStreamEvent]:
-        
+
         state = self._state_for_thread(thread.id)
         user_text = ""
         if input_user_message is not None:
@@ -295,8 +283,8 @@ class CustomerServiceServer(ChatKitServer):
             state.input_items.append({"content": user_text, "role": "user"})
 
         previous_context = state.context
-        
-        # Need to construct the chat context here to pass into the Runner 
+
+        # Need to construct the chat context here to pass into the Runner
         # so that it can be used by agents and tools during the run.
         chat_context = CustomerServiceAgentChatContext(
             thread=thread,
@@ -304,7 +292,7 @@ class CustomerServiceServer(ChatKitServer):
             request_context=context,
             state=state.context,
         )
-        
+
         streamed_items_seen = 0
 
         # Tell the client which thread to bind runner updates to before streaming starts.
@@ -324,7 +312,7 @@ class CustomerServiceServer(ChatKitServer):
                 if hasattr(event, "item"):
                     try:
                         run_item = getattr(event, "item")
-                        
+
                         new_events, active_agent = self._record_events(
                             [run_item], state.current_agent_name, thread.id
                         )
@@ -344,18 +332,18 @@ class CustomerServiceServer(ChatKitServer):
                                     "events": [e.model_dump() for e in new_events],
                                 },
                             )
-                        
-                    except Exception as err:
+
+                    except Exception:
                         pass
                 yield event
                 new_items = result.new_items[streamed_items_seen:]
                 if new_items:
-                    
+
                     new_events, active_agent = self._record_events(
                         new_items, state.current_agent_name, thread.id
                     )
                     state.events.extend(new_events)
-                    
+
                     state.current_agent_name = active_agent
                     streamed_items_seen += len(new_items)
                     await self._broadcast_state(thread, context)
@@ -421,7 +409,7 @@ class CustomerServiceServer(ChatKitServer):
         """
 
         new_context = public_context(state.context)
-        
+
         # Compute context changes to include in the event metadata for debugging and visibility in the UI.
         prev_dict = previous_context.model_dump() if hasattr(previous_context, 'model_dump') else dict(previous_context)
         changes = {k: new_context[k] for k in new_context if prev_dict.get(k) != new_context[k]}

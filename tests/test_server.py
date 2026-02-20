@@ -4,7 +4,6 @@ import sys
 
 from fastapi.testclient import TestClient
 
-
 # Load the FastAPI app from python-backend/main.py by file path
 root = pathlib.Path(__file__).resolve().parents[1]
 backend_dir = root / "python_backend"

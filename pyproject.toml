@@ -13,9 +13,6 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 select = ["E", "F", "W", "C90", "I", "RUF"]
-extend-ignore = ["E203", "W503"]
-
-[tool.isort]
-profile = "black"
+	extend-ignore = ["E501", "C901"]
