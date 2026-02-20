@@ -1,4 +1,6 @@
-Experiment & Evaluation
+# Experiment & Evaluation
+
+
 To assess how effectively the chatbot follows steps, processes actions, and generates accurate responses, you should design an experiment. Your experiment should:
 Evaluate the chatbot's decision-making process (step-by-step action handling) Measure solution performance (quantitative and/or qualitative metrics)
 Report key insights on chatbot effectiveness and accuracy
@@ -45,6 +47,11 @@ Example cases:
 	- Prompt injection attempt → expect guardrail trip and safe response.
 
 Run a suite of these that enables averaging the behaviour of the system.
+
+
+In addition to these two primary experiments, I would like to contextualize the results within another set of KPIs. LLM-based models are unique in that the decision to launch or not launch is not as straightforwards as for other features. The model may prove cost prohibitive, some agents may work well, while others do not, or we may have a system that works well but doesn't provide a clear benefit over other alternatives. 
+
+I would recommend looking at the following items. 
 
 ### Evaluate the chatbot's decision-making process (step-by-step action handling) 
 - Create a flow of the overall key outcomes. This would enable us to break down the decision-making process on a per-agent level. Using the success rate, identify whether we see a boost. Specifically, identify false positive/negative cancellation rates - those orders that are cancelled by the chatbot, but later un-cancelled via the customer's direct contact with the customer service support line. 

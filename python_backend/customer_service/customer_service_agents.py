@@ -41,8 +41,6 @@ class OrderInfo(TypedDict, total=False):
     status: str
     type: str
     datetime_placed: str
-    placed_at: str
-    created_at: str
 
 
 @function_tool
@@ -102,8 +100,7 @@ async def get_order_info(ctx: RunContextWrapper[CustomerServiceAgentChatContext]
         try:
             order_model = OrderModel.model_validate(data)
         except Exception:
-            # If the external API shape doesn't match, embed raw data
-            order_model = OrderModel(order_id=data.get("order_id", ""), customer_email=data.get("customer_email", data.get("email", "")), status=data.get("status", data.get("tracking_status", "unknown")), datetime_placed=data.get("datetime_placed"), shipments=data.get("shipments", []))
+            return ErrorResponse(error=ErrorObj(type="invalid_order_shape", detail="external API returned unexpected order shape")).model_dump()
         return OkOrderResponse(order=order_model).model_dump()
     else:
         return ErrorResponse(error=ErrorObj(type="http", status=resp.status_code, detail=resp.text)).model_dump()
@@ -132,7 +129,7 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
         return ErrorResponse(error=ErrorObj(type="already_shipped", detail="This order has already been shipped and cannot be cancelled. If you would like to return the item once it arrives, we can assist with the return process.")).model_dump()
 
     # check cancellation window (expect ISO string or datetime)
-    placed = order_info.get("datetime_placed") or order_info.get("placed_at") or order_info.get("created_at")
+    placed = order_info.get("datetime_placed")
     try:
         if isinstance(placed, str):
             # Support ISO strings with trailing Z (UTC) and offsets
@@ -175,11 +172,10 @@ async def cancel_order_or_enforce_policies(order_info: OrderInfo) -> Dict[str, A
             data = resp.json() if resp.content else {**order_info, "status": "cancelled"}
         except Exception:
             data = {**order_info, "status": "cancelled"}
-        # validate to OrderModel where possible
         try:
             order_model = OrderModel.model_validate(data)
         except Exception:
-            order_model = OrderModel(order_id=order_id or data.get("order_id", ""), customer_email=customer_email, status=data.get("status", "cancelled"), datetime_placed=data.get("datetime_placed"), shipments=data.get("shipments", []))
+            return ErrorResponse(error=ErrorObj(type="invalid_order_shape", detail="external API returned unexpected order shape")).model_dump()
         return OkOrderResponse(order=order_model).model_dump()
     else:
         # map HTTP failures to structured errors
@@ -202,7 +198,7 @@ redirection_agent = Agent[CustomerServiceAgentChatContext](
         "Route the customer to the best agent: "
         "Order Cancellation for any changes to existing orders, Order Tracking for tracking "
         "existing orders,"
-        "For any other questions, route to {HUMAN_IN_LOOP}."
+        f"For any other questions, route to {HUMAN_IN_LOOP}."
         "If the request is clear, hand off immediately and let the specialist complete "
         "multi-step work without asking the user to confirm after each tool call."
         "Never emit more than one handoff per message: do your prep (at most one tool"
@@ -240,7 +236,7 @@ order_tracking_agent = Agent[CustomerServiceAgentChatContext](
         "You are a helpful customer service agent specializing in order tracking. "
         "When a customer asks about the status or location of their order, retrieve " ""
         "the latest tracking information and provide a concise, friendly update. "
-        "If there is a problem pulling up the tracking information, redirect to {HUMAN_IN_LOOP}"
+        f"If there is a problem pulling up the tracking information, redirect to {HUMAN_IN_LOOP}."
         "Return to the redirection agent if done or if the customer needs help with anything else."
     ),
     tools=[get_order_info],

@@ -28,9 +28,7 @@ class Shipment(BaseModel):
 class OrderRecord(BaseModel):
     order_id: str
     customer_email: str
-    # Expose both `status` and `tracking_status` for compatibility; keep them in sync.
     status: str
-    tracking_status: Optional[str] = None
     datetime_placed: Optional[str]
     shipments: List[Shipment]
 
@@ -62,7 +60,6 @@ ORDERS_DB: Dict[str, OrderRecord] = {
         order_id="B456",
         customer_email="b456@gmail.com",
         status="processing",
-        tracking_status="processing",
         datetime_placed=datetime.datetime.now(timezone.utc).isoformat(),
         shipments=[],
     ),
@@ -72,14 +69,11 @@ ORDERS_DB: Dict[str, OrderRecord] = {
 router = APIRouter()
 
 
-@router.get("/api/v1/orders/{order_id}/", response_model=OrderRecord)
-async def get_order(order_id: str, x_customer_email: Optional[str] = Header(None)):
-    """Return an order record if the X-Customer-Email header matches.
+def _get_record_for_order(order_id: str, x_customer_email: Optional[str]) -> OrderRecord:
+    """Helper to validate header, existence, and ownership of an order.
 
-    - 400 if the header is missing
-    - 404 if the order_id is not present
-    - 403 if the email does not match the order's owner
-    - 200 with the order record if matched
+    Raises the appropriate `HTTPException` on failure and returns the `OrderRecord`
+    when checks pass.
     """
     if x_customer_email is None:
         raise HTTPException(status_code=400, detail="Missing X-Customer-Email header")
@@ -94,6 +88,18 @@ async def get_order(order_id: str, x_customer_email: Optional[str] = Header(None
     return record
 
 
+@router.get("/api/v1/orders/{order_id}/", response_model=OrderRecord)
+async def get_order(order_id: str, x_customer_email: Optional[str] = Header(None)):
+    """Return an order record if the X-Customer-Email header matches.
+
+    - 400 if the header is missing
+    - 404 if the order_id is not present
+    - 403 if the email does not match the order's owner
+    - 200 with the order record if matched
+    """
+    return _get_record_for_order(order_id, x_customer_email)
+
+
 @router.patch("/api/v1/orders/{order_id}/", response_model=OrderRecord)
 async def patch_order(order_id: str, update: OrderUpdate, x_customer_email: Optional[str] = Header(None)):
     """Patch an order record. Only supports updating `status` for local testing.
@@ -103,20 +109,10 @@ async def patch_order(order_id: str, update: OrderUpdate, x_customer_email: Opti
     - 403 if the email does not match the order's owner
     - 200 with the updated order record
     """
-    if x_customer_email is None:
-        raise HTTPException(status_code=400, detail="Missing X-Customer-Email header")
-
-    record = ORDERS_DB.get(order_id)
-    if record is None:
-        raise HTTPException(status_code=404, detail="order not found")
-
-    if record.customer_email.lower() != x_customer_email.lower():
-        raise HTTPException(status_code=403, detail="email does not match order")
+    record = _get_record_for_order(order_id, x_customer_email)
 
     if update.status:
-        # update both status fields for compatibility
         record.status = update.status
-        record.tracking_status = update.status
 
     ORDERS_DB[order_id] = record
     return record
